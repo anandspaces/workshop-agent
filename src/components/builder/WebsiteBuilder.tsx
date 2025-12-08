@@ -3,9 +3,12 @@ import { PromptPanel } from './PromptPanel';
 import { PreviewPanel } from './PreviewPanel';
 import { useBuilderState } from '@/hooks/useBuilderState';
 import { useToast } from '@/hooks/use-toast';
-import { GEMINI_MODEL, systemPrompt } from '@/constants/constants';
+import { systemPrompt } from '@/constants/constants';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const TEMPERATURE = 0.7;
+const MAX_OUTPUT_TOKENS = 8192;
+const GEMINI_MODEL = 'gemini-3-pro-preview';
 
 export function WebsiteBuilder() {
   const {
@@ -94,8 +97,8 @@ export function WebsiteBuilder() {
             }
           ],
           generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 8192,
+            temperature: TEMPERATURE,
+            maxOutputTokens: MAX_OUTPUT_TOKENS,
           }
         }),
       });

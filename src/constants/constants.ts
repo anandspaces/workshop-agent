@@ -30,9 +30,9 @@ TEMPLATE STRUCTURE:
 Output ONLY the HTML code, no explanations or markdown.`
 
 export const STORAGE_KEYS = {
-    CODE: 'builder_code',
-    HISTORY: 'builder_history',
-    VIEW_MODE: 'builder_view_mode',
+  CODE: 'builder_code',
+  HISTORY: 'builder_history',
+  VIEW_MODE: 'builder_view_mode',
 };
 
 export const DEFAULT_CODE = `<!DOCTYPE html>
@@ -67,5 +67,3 @@ export const DEFAULT_CODE = `<!DOCTYPE html>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>`;
-
-export const GEMINI_MODEL = 'gemini-3-pro-preview';
