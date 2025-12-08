@@ -3,7 +3,7 @@ import { PromptPanel } from './PromptPanel';
 import { PreviewPanel } from './PreviewPanel';
 import { useBuilderState } from '@/hooks/useBuilderState';
 import { useToast } from '@/hooks/use-toast';
-import { systemPrompt } from '@/constants/constants';
+import { systemPrompt, HTML_HEAD_TEMPLATE } from '@/constants/constants';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const TEMPERATURE = 0.7;
@@ -28,7 +28,47 @@ export function WebsiteBuilder() {
 
   const { toast } = useToast();
 
-  const extractHtmlFromResponse = (text: string): string => {
+  const validateAndCompleteBodyTags = (bodyContent: string): string => {
+    let content = bodyContent.trim();
+
+    // Check if body opening tag exists
+    const hasOpeningTag = /<body[^>]*>/i.test(content);
+    const hasClosingTag = /<\/body>/i.test(content);
+
+    // Extract content between body tags if they exist
+    let innerContent = content;
+    if (hasOpeningTag && hasClosingTag) {
+      const bodyMatch = content.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+      if (bodyMatch) {
+        innerContent = bodyMatch[1];
+      }
+    } else if (hasOpeningTag && !hasClosingTag) {
+      // Has opening but no closing - extract everything after opening tag
+      const openMatch = content.match(/<body[^>]*>([\s\S]*)/i);
+      if (openMatch) {
+        innerContent = openMatch[1];
+      }
+    } else if (!hasOpeningTag && hasClosingTag) {
+      // Has closing but no opening - extract everything before closing tag
+      const closeMatch = content.match(/([\s\S]*)<\/body>/i);
+      if (closeMatch) {
+        innerContent = closeMatch[1];
+      }
+    }
+
+    // Ensure Bootstrap JS bundle is included at the end
+    const bootstrapScript = '<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>';
+    const hasBootstrapScript = innerContent.includes('bootstrap.bundle.min.js');
+
+    if (!hasBootstrapScript) {
+      innerContent = innerContent.trim() + '\n  ' + bootstrapScript;
+    }
+
+    // Wrap in proper body tags
+    return `<body>\n  ${innerContent.trim()}\n</body>`;
+  };
+
+  const extractBodyFromResponse = (text: string): string => {
     // Remove markdown code blocks if present
     let cleanedText = text.trim();
 
@@ -44,19 +84,29 @@ export function WebsiteBuilder() {
       cleanedText = codeBlockMatch[1].trim();
     }
 
-    // Find the HTML document
-    const doctypeIndex = cleanedText.toLowerCase().indexOf('<!doctype');
-    if (doctypeIndex !== -1) {
-      cleanedText = cleanedText.substring(doctypeIndex);
+    // Find the body tag
+    const bodyStart = cleanedText.toLowerCase().indexOf('<body');
+    const bodyEnd = cleanedText.toLowerCase().lastIndexOf('</body>');
+
+    let bodyContent = '';
+    if (bodyStart !== -1 && bodyEnd !== -1) {
+      // Extract body tag including opening and closing tags
+      bodyContent = cleanedText.substring(bodyStart, bodyEnd + 7);
+    } else if (bodyStart !== -1) {
+      // Has opening tag but no closing - take everything from body start
+      bodyContent = cleanedText.substring(bodyStart);
+    } else {
+      // No body tags found - treat entire content as body content
+      bodyContent = cleanedText;
     }
 
-    // Find closing html tag
-    const closingHtmlIndex = cleanedText.toLowerCase().lastIndexOf('</html>');
-    if (closingHtmlIndex !== -1) {
-      cleanedText = cleanedText.substring(0, closingHtmlIndex + 7);
-    }
+    // Validate and complete the body tags
+    return validateAndCompleteBodyTags(bodyContent);
+  };
 
-    return cleanedText;
+  const mergeBodyWithHead = (bodyContent: string): string => {
+    // Combine the fixed head template with the generated body content
+    return `${HTML_HEAD_TEMPLATE}\n${bodyContent}\n</html>`;
   };
 
   const handleGenerate = useCallback(async () => {
@@ -75,9 +125,20 @@ export function WebsiteBuilder() {
     let generatedCode = '';
 
     try {
-      const userMessage = history.length > 0 && code
-        ? `Current website code:\n\`\`\`html\n${code}\n\`\`\`\n\nUser refinement request: ${prompt}\n\nUpdate the website based on the request. Output the complete updated HTML.`
+      // Extract current body content if refining
+      let currentBodyContent = '';
+      if (history.length > 0 && code) {
+        const bodyStart = code.toLowerCase().indexOf('<body');
+        const bodyEnd = code.toLowerCase().lastIndexOf('</body>');
+        if (bodyStart !== -1 && bodyEnd !== -1) {
+          currentBodyContent = code.substring(bodyStart, bodyEnd + 7);
+        }
+      }
+
+      const userMessage = currentBodyContent
+        ? `Current website body content:\n\`\`\`html\n${currentBodyContent}\n\`\`\`\n\nUser refinement request: ${prompt}\n\nUpdate the website based on the request. Output only the updated <body> content.`
         : `Create a website: ${prompt}`;
+
 
       console.log('🚀 Starting generation with prompt:', prompt);
       console.log('📝 User message:', userMessage.substring(0, 200) + '...');
@@ -171,9 +232,10 @@ export function WebsiteBuilder() {
                 generatedCode += content;
 
                 // Stream updates to editor in real-time
-                const streamCode = extractHtmlFromResponse(generatedCode);
-                if (streamCode.includes('<!DOCTYPE') || streamCode.includes('<!doctype') || streamCode.includes('<html')) {
-                  setCode(streamCode);
+                const bodyContent = extractBodyFromResponse(generatedCode);
+                const fullHtml = mergeBodyWithHead(bodyContent);
+                if (bodyContent.includes('<body')) {
+                  setCode(fullHtml);
                   setViewMode('editor'); // Switch to editor to see streaming
                 }
               }
@@ -196,18 +258,19 @@ export function WebsiteBuilder() {
         }
       }
 
-      // Clean and extract HTML
+      // Clean and extract body content, then merge with head
       console.log('📦 Raw generated code length:', generatedCode.length);
       console.log('📦 Raw generated code preview:', generatedCode.substring(0, 500));
 
-      const finalCode = extractHtmlFromResponse(generatedCode);
+      const bodyContent = extractBodyFromResponse(generatedCode);
+      const finalCode = mergeBodyWithHead(bodyContent);
 
-      console.log('✨ Extracted code length:', finalCode.length);
-      console.log('✨ Extracted code preview:', finalCode.substring(0, 500));
-      console.log('✅ Has DOCTYPE:', finalCode.includes('<!DOCTYPE') || finalCode.includes('<!doctype'));
-      console.log('✅ Has <html>:', finalCode.includes('<html'));
+      console.log('✨ Extracted body length:', bodyContent.length);
+      console.log('✨ Extracted body preview:', bodyContent.substring(0, 500));
+      console.log('✨ Final HTML length:', finalCode.length);
+      console.log('✅ Has <body>:', bodyContent.includes('<body'));
 
-      if (finalCode.includes('<!DOCTYPE') || finalCode.includes('<!doctype') || finalCode.includes('<html')) {
+      if (bodyContent.includes('<body')) {
         setCode(finalCode);
         addToHistory(prompt.trim(), finalCode);
         setViewMode('editor'); // Show in editor mode for iterative improvements

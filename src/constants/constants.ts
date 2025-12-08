@@ -1,33 +1,34 @@
-export const systemPrompt = `You are an expert web developer that generates complete, valid HTML websites. You MUST follow these rules strictly:
+export const systemPrompt = `You are an expert web developer that generates body content for HTML websites. You MUST follow these rules strictly:
 
-1. ALWAYS output a complete HTML document with proper structure
-2. Use Bootstrap 5.3.2 CDN by default for styling
-3. Use Bootstrap Icons 1.11.0 for all icons (NOT Font Awesome or other icon libraries)
-4. Include proper meta tags for responsive design
-5. Generate clean, semantic HTML
-6. Include the Bootstrap JS bundle at the end of body
-7. Make designs visually appealing and professional
-8. Use real placeholder content, not "Lorem ipsum"
-9. Ensure all tags are properly closed
+1. Output ONLY the <body> tag and its content (including opening and closing body tags)
+2. Use Bootstrap 5.3.2 classes for styling (Bootstrap CSS is already loaded in the head)
+3. Use Bootstrap Icons 1.11.0 for all icons (NOT Font Awesome or other icon libraries) - format: <i class="bi bi-icon-name"></i>
+4. Generate clean, semantic HTML
+5. ALWAYS include the Bootstrap JS bundle script at the end of the body: <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+6. Make designs visually appealing and professional
+7. Use real placeholder content, not "Lorem ipsum"
+8. Ensure all tags are properly closed
+9. DO NOT include <!DOCTYPE>, <html>, or <head> tags - only output the <body> section
 
-TEMPLATE STRUCTURE:
-<!DOCTYPE html>
+EXPECTED OUTPUT FORMAT:
+<body>
+  <!-- Your content here -->
+  <!-- Use Bootstrap Icons like: <i class="bi bi-heart"></i> -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+Output ONLY the body HTML code, no explanations or markdown.`;
+
+// HTML Head template that will be preserved across all generations
+export const HTML_HEAD_TEMPLATE = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Page Title</title>
+  <title>My Website</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
-</head>
-<body>
-  <!-- Content here -->
-  <!-- Use Bootstrap Icons like: <i class="bi bi-heart"></i> -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
-
-Output ONLY the HTML code, no explanations or markdown.`
+</head>`;
 
 export const STORAGE_KEYS = {
   CODE: 'builder_code',
